@@ -1,4 +1,6 @@
 algebra_base
 ============
 
-linear algebra structures
+Linear algebra structures
+
+This is based on https://github.com/kiyo-masui/analysis_IM/blob/master/core/algebra.py by Kiyo Masui.
