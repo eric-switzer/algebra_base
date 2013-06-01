@@ -1,4 +1,5 @@
 import numpy as np
+import operator
 
 
 def empty_like(obj):
@@ -32,15 +33,15 @@ def as_alg_like(array, obj):
     ----------
     array: numpy array
         Array to be cast
-    obj: alg_object
+    obj: AlgObject
         Algebra object from which propertise should be copied.
     """
 
-    if not isinstance(obj, alg_object):
-        raise TypeError("Object to mimic must be an `alg_object`.")
+    if not isinstance(obj, AlgObject):
+        raise TypeError("Object to mimic must be an `AlgObject`.")
 
     out = array
-    out = info_array(out)
+    out = InfoArray(out)
     out.info = dict(obj.info)
 
     if isinstance(obj, vect):

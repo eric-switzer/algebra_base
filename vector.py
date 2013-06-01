@@ -1,4 +1,8 @@
-class vect(alg_object):
+import base
+import info_header
+import warnings
+
+class VectorObject(base.AlgObject):
     """Multidimentional array interpreted as a vector.
 
     This class gets most of its functionality from the numpy ndarray class.
@@ -15,7 +19,7 @@ class vect(alg_object):
 
     Parameters
     ----------
-    input_array: info_array (for vect_array) or info_memmap (for vect_memmap)
+    input_array: InfoArray (for vect_array) or InfoMemmap (for vect_memmap)
         Array to be converted to a vect.
     axis_names: tuple of strings, optional
         The sequence contains the name of each axis.  This sequence will be
@@ -30,16 +34,16 @@ class vect(alg_object):
     See Also
     --------
     make_vect: Cast any array as a vector.
-    info_array, info_memap: Base classes that handle meta data.
+    InfoArray, info_memap: Base classes that handle meta data.
 
     Notes
     -----
     Since much of the functionality provided by this class is only valid
     for a certain shape of the array, shape changing operations in
-    general return an `info_array` or `info_memmap` as appropriate (except
+    general return an `InfoArray` or `InfoMemmap` as appropriate (except
     explicit assignment to vect.shape).
 
-    The `axes` attribute is actually stored in the `info_array`'s info
+    The `axes` attribute is actually stored in the `InfoArray`'s info
     dictionary.  This is just an implimentation detail.
     """
 
@@ -109,34 +113,35 @@ class vect(alg_object):
 
 def _vect_class_factory(base_class):
     """Internal class factory for making a vector class that inherits from
-    either info_array or info_memmap."""
+    either InfoArray or InfoMemmap."""
 
-    if (base_class is not info_array) and (base_class is not info_memmap):
+    if (base_class is not info_header.InfoArray) and \
+       (base_class is not info_header.InfoMemmap):
         raise TypeError("Vectors inherit from info arrays or info memmaps.")
 
-    class vect_class(vect, base_class):
-        __doc__ = vect.__doc__
+    class vect_class(VectorObject, base_class):
+        __doc__ = VectorObject.__doc__
         info_base = base_class
 
     return vect_class
 
 
-vect_array = _vect_class_factory(info_array)
+vect_array = _vect_class_factory(info_header.InfoArray)
 vect_array.__name__ = 'vect_array'
-vect_memmap = _vect_class_factory(info_memmap)
+vect_memmap = _vect_class_factory(info_header.InfoMemmap)
 vect_memmap.__name__ = 'vect_memmap'
 
 
 def make_vect(array, axis_names=None):
     """Do whatever it takes to make a vect out of an array.
 
-    Convert any class that can be converted to a vect (array, info_array,
-    memmap, info_memmap) to the appropriate vect object (vect_array,
+    Convert any class that can be converted to a vect (array, InfoArray,
+    memmap, InfoMemmap) to the appropriate vect object (vect_array,
     vect_memmap).
 
     This convenience function just simplifies the constructor hierarchy.
     Normally to get a vect out of an array, you would need to construct an
-    intermediate info_array object.  This bypasses that step.
+    intermediate InfoArray object.  This bypasses that step.
 
     Parameters
     ----------
@@ -155,12 +160,12 @@ def make_vect(array, axis_names=None):
     """
 
     if isinstance(array, sp.memmap):
-        if not isinstance(array, info_memmap):
-            array = info_memmap(array)
+        if not isinstance(array, info_header.InfoMemmap):
+            array = info_header.InfoMemmap(array)
         return vect_memmap(array, axis_names)
     elif isinstance(array, sp.ndarray):
-        if not isinstance(array, info_array):
-            array = info_array(array)
+        if not isinstance(array, info_header.InfoArray):
+            array = info_header.InfoArray(array)
         return vect_array(array, axis_names)
     else:
         raise TypeError("Object cannot be converted to a vector.")

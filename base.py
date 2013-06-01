@@ -1,4 +1,8 @@
-class alg_object(object):
+import scipy as sp
+import cubic_conv_interpolation as cci
+
+
+class AlgObject(object):
     """Base class for all vectors and matricies.
 
     This is not an actual class by itself, just defines some methods common to
@@ -38,8 +42,8 @@ class alg_object(object):
 
         Examples
         --------
-        >>> import algebra
-        >>> a = algebra.make_vect(sp.zeros(5, 5), axis_names=('ra', 'dec'))
+        >>> import vector
+        >>> a = vector.make_vect(sp.zeros(5, 5), axis_names=('ra', 'dec'))
         >>> a.set_axis_info('ra', 2, 0.5)
         >>> a.get_axis('ra')
         array([1.0, 1.5, 2.0, 2.5, 3.0])
@@ -52,14 +56,14 @@ class alg_object(object):
         self.info[axis_name + '_delta'] = float(delta)
 
     def copy_axis_info(self, alg_obj):
-        """Set the axis info by copying from another alg_object.
+        """Set the axis info by copying from another AlgObject.
 
         This transfers meta data that is set with `set_axis_info` another
-        alg_object instance.
+        AlgObject instance.
 
         Parameters
         ----------
-        alg_obj: algebra.alg_object instance
+        alg_obj: base.AlgObject instance
             Object from which to copy axis meta data.  Meta data for all axis
             names that occur in both `alg_obj.axes` and `self.axes` is copied.
 
@@ -122,7 +126,7 @@ class alg_object(object):
         """Get the interpolation weights for a subset of the dimensions.
 
         This method gets the interpolation weights for interpolating the
-        alg_object is some subset of it's dimensions.  This provides the
+        AlgObject is some subset of its dimensions.  This provides the
         freedom in the uninterpolated dimensions to either slice or otherwise
         index the array.
 
@@ -329,3 +333,10 @@ class alg_object(object):
 
         return out
 
+
+if __name__ == "__main__":
+    import doctest
+
+    OPTIONFLAGS = (doctest.ELLIPSIS |
+                   doctest.NORMALIZE_WHITESPACE)
+    #doctest.testmod(optionflags=OPTIONFLAGS)

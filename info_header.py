@@ -1,3 +1,9 @@
+import scipy as sp
+from functools import wraps
+import numpy.lib.format as npfor
+from numpy.lib.utils import safe_eval
+
+
 def write_array_header_1_0(fp, d):
     """ Write the header for an array using the 1.0 format.
 
@@ -58,7 +64,7 @@ def _replace_write_header(f):
     return wrapper
 
 
-class info_array(sp.ndarray):
+class InfoArray(sp.ndarray):
     """A standard numpy ndarray object with a dictionary for holding
     extra info.
 
@@ -70,7 +76,7 @@ class info_array(sp.ndarray):
     Parameters
     ----------
     input_array: array like
-        Array to converted to an info_array.  The info_array will be a
+        Array to converted to an InfoArray.  The InfoArray will be a
         view to the input array.
     info: dictionary
         Dictionary to be set as the `info` attribute (default is None, which
@@ -86,7 +92,7 @@ class info_array(sp.ndarray):
 
     See Also
     --------
-    info_memmap: Analogous class to this one with data stored on disk.
+    InfoMemmap: Analogous class to this one with data stored on disk.
     vect_array: Vector object based on this class.
     mat_array: Matrix object based on this class.
 
@@ -131,15 +137,15 @@ class info_array(sp.ndarray):
         # Create the normal view.
         out = sp.ndarray.view(self, *args)
 
-        # If it's info_array, replace the copy of the info attribute with a
+        # If it's InfoArray, replace the copy of the info attribute with a
         # reference (they will share metadata).
-        if isinstance(out, info_array):
+        if isinstance(out, InfoArray):
             out.info = self.info
 
         return out
 
 
-class info_memmap(sp.memmap):
+class InfoMemmap(sp.memmap):
     """A standard numpy memmap object with a dictionary for holding extra info.
 
     This class should work exactly the same as a numpy memmap object but has an
@@ -151,7 +157,7 @@ class info_memmap(sp.memmap):
     Parameters
     ----------
     marray: numpy.memmap
-        Array to be converted to an info_memmap.  The info_memmap will be a
+        Array to be converted to an InfoMemmap.  The InfoMemmap will be a
         view to the input array.
     info: dictionary
         Dictionary to be set as the `info` attribute (default is None, which
@@ -177,10 +183,10 @@ class info_memmap(sp.memmap):
 
     See Also
     --------
-    info_array: Similar class with data stored in memory.
+    InfoArray: Similar class with data stored in memory.
     vect_memmap: Vector object based on this class.
     mat_memmap: Matrix object based on this class.
-    open_memmap: Open a file on disk as an info_memmap.
+    open_memmap: Open a file on disk as an InfoMemmap.
 
     Notes
     -----
@@ -197,7 +203,7 @@ class info_memmap(sp.memmap):
         # Input array is an already formed ndarray instance.
         # We first cast to be our class type.
         if not isinstance(marray, sp.memmap):
-            raise TypeError("info_memmaps can only be initialized off of "
+            raise TypeError("InfoMemmaps can only be initialized off of "
                             "numpy memmaps.")
 
         obj = marray.view(cls)
@@ -236,9 +242,9 @@ class info_memmap(sp.memmap):
         # Create the normal view.
         out = sp.memmap.view(self, *args)
 
-        # If it's info_array, replace the copy of the info attribute with a
+        # If it's InfoArray, replace the copy of the info attribute with a
         # reference (they will share metadata).
-        if isinstance(out, info_memmap):
+        if isinstance(out, InfoMemmap):
             out.info = self.info
             out.metafile = self.metafile
 
@@ -288,10 +294,10 @@ class info_memmap(sp.memmap):
 
 
 def assert_info(array):
-    """Check if passed array is an info_array or info_memmap.
+    """Check if passed array is an InfoArray or InfoMemmap.
 
     Raises a ValueError if check fails.
     """
-    if not (isinstance(array, info_array) or isinstance(array, info_memmap)):
-        raise TypeError("Array is not an algebra.info_array or "
-                        "algebra.info_memmap.")
+    if not (isinstance(array, InfoArray) or isinstance(array, InfoMemmap)):
+        raise TypeError("Array is not an info_header.InfoArray or "
+                        "info_header.InfoMemmap.")

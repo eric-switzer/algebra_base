@@ -1,7 +1,32 @@
+import os
+from functools import wraps
+import numpy.lib.format as npfor
+from numpy.lib.utils import safe_eval
+
+
+def _replace_write_header(f):
+    """Wrap functions such that np.lib.format.write_array_header_1_0 is
+    replaced by the local version, but only for the one function call."""
+    @wraps(f)
+    def wrapper(*args, **kwds):
+        # Replace the header writer in the format module.
+        tmp_write_header = npfor.write_array_header_1_0
+        npfor.write_array_header_1_0 = write_array_header_1_0
+        # Evaluate the function.
+        try:
+            result = f(*args, **kwds)
+        finally:
+            # Restore the header.
+            npfor.write_array_header_1_0 = tmp_write_header
+        return result
+
+    return wrapper
+
+
 @_replace_write_header
 def open_memmap(filename, mode='r+', dtype=None, shape=None,
                 fortran_order=False, version=(1, 0), metafile=None):
-    """Open a file and memory map it to an info_memmap object.
+    """Open a file and memory map it to an InfoMemmap object.
 
     This is similar to the numpy.lib.format.openmemmap() function but also
     deals with the meta data dictionary, which is read and written from a
@@ -13,13 +38,13 @@ def open_memmap(filename, mode='r+', dtype=None, shape=None,
     Parameters
     ----------
     metafile: str
-        File name for which the `info` attribute of the returned info_memmap
+        File name for which the `info` attribute of the returned InfoMemmap
         will be read from and written to. Default is None, where the it is
         assumed to be `filename` + ".meta".
 
     Returns
     -------
-    marray: info_memmap
+    marray: InfoMemmap
         The `info` is intialized as an empty dictionary if `mode` is 'w' or if
         the file corresponding to `metafile` does not exist.  The `metafile`
         attribute of marray is set to the `metafile` parameter unless `mode` is
@@ -54,7 +79,7 @@ def open_memmap(filename, mode='r+', dtype=None, shape=None,
     if mode is 'r' or mode is 'c':
         metafile = None
 
-    marray = info_memmap(marray, info, metafile)
+    marray = InfoMemmap(marray, info, metafile)
 
     return marray
 
@@ -70,7 +95,7 @@ def load(file, metafile=None):
     file: file handle or str
         .npy file or file name to read the array from.
     metafile: str
-        File name for which the `info` attribute of the returned info_array
+        File name for which the `info` attribute of the returned InfoArray
         will be read from. Default is None, where the it is
         assumed to be the file name associated with `file` with ".meta"
         appended. If the file does not exist, the info attribute is initialized
@@ -78,7 +103,7 @@ def load(file, metafile=None):
 
     Returns
     -------
-    iarray: info_array object
+    iarray: InfoArray object
     """
 
     # Load the data from .npy format.
@@ -104,7 +129,7 @@ def load(file, metafile=None):
         info = {}
 
     # Construct the infor array.
-    array = info_array(array, info)
+    array = InfoArray(array, info)
 
     return array
 
@@ -119,7 +144,7 @@ def save(file, iarray, metafile=None, version=(1, 0)):
     ----------
     file: file handle or str
         File or file name to write the array to in .npy format.
-    iarray: info_array object or array with similar interface
+    iarray: InfoArray object or array with similar interface
         Array to be written to file with meta data.
     metafile: str
         File name for the meta data.  The `info` attribute of `iarray` will be
@@ -173,8 +198,8 @@ def save_h5(h5obj, path, iarray):
         File to which the info array will be written.
     path: string
         Path within `h5obj` to write the array.
-    iarray: info_array
-        info_array to write.
+    iarray: InfoArray
+        InfoArray to write.
     """
 
     # TODO: Allow `h5obj` to be a string with a path to a new file to be
@@ -199,7 +224,7 @@ def load_h5(h5obj, path):
 
     Returns
     -------
-    iarray: info_array
+    iarray: InfoArray
         Array loaded from file.
     """
 
@@ -213,7 +238,7 @@ def load_h5(h5obj, path):
     for key, value in data.attrs.iteritems():
         info[key] = safe_eval(value)
 
-    iarray = info_array(iarray, info)
+    iarray = InfoArray(iarray, info)
 
     return iarray
 

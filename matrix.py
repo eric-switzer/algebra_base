@@ -1,4 +1,9 @@
-class mat(alg_object):
+import sys
+import base
+import info_header
+import warnings
+
+class MatrixObject(base.AlgObject):
     """Multidimentional array interpreted as a matrix.
 
     This class gets most of its functionality from the numpy ndarray class.
@@ -24,7 +29,7 @@ class mat(alg_object):
 
     Parameters
     ----------
-    input_array: info_array (for mat_array) or info_memmap (for
+    input_array: InfoArray (for mat_array) or InfoMemmap (for
                   mat_memmap)
         Array to be converted to a vect.
     row_axes: tuple of ints
@@ -57,17 +62,17 @@ class mat(alg_object):
     -----
     Since much of the functionality provided by this class is only valid
     for a certain shape of the array, shape changing operations in
-    general return an `info_array` or `info_memmap` as appropriate (except
+    general return an `InfoArray` or `InfoMemmap` as appropriate (except
     explicit assignment to mat.shape).
 
     The `axes`, `rows` and `cols` attributes are actually stored in the
-    `info_array`'s info dictionary.  This is just an implementation detail.
+    `InfoArray`'s info dictionary.  This is just an implementation detail.
 
     See Also
     --------
     vect_array, vect_memmap: Vector classes.
     make_mat: Function that casts any array as a matrix.
-    info_array, info_memmap: Base classes that handle meta data.
+    InfoArray, InfoMemmap: Base classes that handle meta data.
     """
 
     __array_priority__ = 3.0
@@ -439,7 +444,7 @@ class mat(alg_object):
         self.assert_axes_ordered()
         # Allocate memory.
         out_mat = sp.zeros(shape, dtype=self.dtype)
-        out_mat = info_array(out_mat)
+        out_mat = info_header.InfoArray(out_mat)
         out_mat = mat_array(out_mat)
 
         # Figure out how many axes are in both row and col (and therefore block
@@ -544,33 +549,34 @@ class mat(alg_object):
 
 def _mat_class_factory(base_class):
     """Internal class factory for making a matrix class that inherits from
-    either info_array or info_memmap."""
+    either InfoArray or InfoMemmap."""
 
-    if (base_class is not info_array) and (base_class is not info_memmap):
+    if (base_class is not info_header.InfoArray) and \
+       (base_class is not info_header.InfoMemmap):
         raise TypeError("Matrices inherit from info arrays or info memmaps.")
 
-    class mat_class(mat, base_class):
-        __doc__ = mat.__doc__
+    class mat_class(MatrixObject, base_class):
+        __doc__ = MatrixObject.__doc__
         info_base = base_class
 
     return mat_class
 
-mat_array = _mat_class_factory(info_array)
+mat_array = _mat_class_factory(info_header.InfoArray)
 mat_array.__name__ = 'mat_array'
-mat_memmap = _mat_class_factory(info_memmap)
+mat_memmap = _mat_class_factory(info_header.InfoMemmap)
 mat_memmap.__name__ = 'mat_memmap'
 
 
 def make_mat(array, row_axes=None, col_axes=None, axis_names=None):
     """Do what ever it takes to make a mat out of an array.
 
-    Convert any class that can be converted to a mat (array, info_array,
-    memmap, info_memmap) to the appropriate mat object (mat_array or
+    Convert any class that can be converted to a mat (array, InfoArray,
+    memmap, InfoMemmap) to the appropriate mat object (mat_array or
     mat_memmap).
 
     This convieiance function just simplifies the constructor heirarchy.
     Normally to get an mat out of an array, you would need to construct an
-    intermediate info_array object.  This bypasses that step.
+    intermediate InfoArray object.  This bypasses that step.
 
     Parameters
     ----------
@@ -597,12 +603,12 @@ def make_mat(array, row_axes=None, col_axes=None, axis_names=None):
         A view of `array` converted to a mat object.
     """
     if isinstance(array, sp.memmap):
-        if not isinstance(array, info_memmap):
-            array = info_memmap(array)
+        if not isinstance(array, info_header.InfoMemmap):
+            array = info_header.InfoMemmap(array)
         return mat_memmap(array, row_axes, col_axes, axis_names)
     elif isinstance(array, sp.ndarray):
-        if not isinstance(array, info_array):
-            array = info_array(array)
+        if not isinstance(array, info_header.InfoArray):
+            array = info_header.InfoArray(array)
         return mat_array(array, row_axes, col_axes, axis_names)
     else:
         raise TypeError("Object cannot be converted to a matrix.")
