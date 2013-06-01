@@ -9,7 +9,7 @@ class VectorObject(base.AlgObject):
     """Multidimentional array interpreted as a vector.
 
     This class gets most of its functionality from the numpy ndarray class.
-    In addition it provides support for orgainizing it's data as a vector.
+    In addition it provides support for orgainizing its data as a vector.
     This class comes in two flavours: `vect_array` and `vect_memmap`
     depending on whether the array is stored in memory or on disk.  The raw
     `vect` class is not a valid class by itself.

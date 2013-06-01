@@ -9,7 +9,7 @@ class MatrixObject(base.AlgObject):
     """Multidimentional array interpreted as a matrix.
 
     This class gets most of its functionality from the numpy ndarray class.
-    In addition it provides support for organizing it's data as a vector.
+    In addition it provides support for organizing its data as a vector.
     This class comes in two flavours: `mat_array` and `mat_memmap`
     depending on whether the array is stored in memory or on disk.  The raw
     `mat` class is not a valid class by itself.
@@ -492,7 +492,7 @@ class MatrixObject(base.AlgObject):
         """Remove an axis by indexing with an integer.
 
         Returns a view of the `mat` with an axis removed by indexing it with
-        the passed integer.  The output retains it's `mat` characteristics,
+        the passed integer.  The output retains its `mat` characteristics,
         which are updated to reflect the removal of the index.
 
         Parameters
