@@ -1,6 +1,9 @@
+import scipy as sp
 import base
 import info_header
 import warnings
+import helpers
+
 
 class VectorObject(base.AlgObject):
     """Multidimentional array interpreted as a vector.
@@ -67,16 +70,16 @@ class VectorObject(base.AlgObject):
             if obj.info['type'] != 'vect':
                 raise ValueError("Meta data present is incompatible.")
 
-            _check_axis_names(obj)
+            helpers.check_axis_names(obj)
 
         else:
-            _set_type_axes(obj, 'vect', axis_names)
+            helpers.set_type_axes(obj, 'vect', axis_names)
 
         return obj
 
     def __setattr__(self, name, value):
         if name == 'axes':
-            _check_axis_names(self, value)
+            helpers.check_axis_names(self, value)
             self.info['axes'] = value
         else:
             self.info_base.__setattr__(self, name, value)
@@ -107,7 +110,7 @@ class VectorObject(base.AlgObject):
 
     def mat_shape(self):
         """Get the shape of the represented matrix (vector)."""
-        _check_axis_names(self)
+        helpers.check_axis_names(self)
         return (self.size,)
 
 
@@ -169,4 +172,3 @@ def make_vect(array, axis_names=None):
         return vect_array(array, axis_names)
     else:
         raise TypeError("Object cannot be converted to a vector.")
-

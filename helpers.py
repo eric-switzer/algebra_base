@@ -1,21 +1,24 @@
-def _set_type_axes(array, type, axis_names):
+import info_header
+
+
+def set_type_axes(array, type, axis_names):
     """Sets the array.info['type'] and array.info[axes] metadata and does some
     checks.  Used in vect and mat constructors.
     """
 
-    assert_info(array)
+    info_header.assert_info(array)
 
     if axis_names is None:
         axes = (None,)*array.ndim
     else:
-        _check_axis_names(array, axis_names)
+        check_axis_names(array, axis_names)
         axes = tuple(axis_names)
 
     array.info['type'] = type
     array.axes = axes
 
 
-def _check_axis_names(array, axis_names=None):
+def check_axis_names(array, axis_names=None):
     """Checks that axis names  sequence is valid for array."""
 
     if axis_names is None:
@@ -30,7 +33,7 @@ def _check_axis_names(array, axis_names=None):
                 raise TypeError("Invalid axis name.")
 
 
-def _check_rows_cols(arr, row_axes=None, col_axes=None):
+def check_rows_cols(arr, row_axes=None, col_axes=None):
     """Check that rows and cols are valid for the matrix."""
 
     if row_axes is None and col_axes is None:

@@ -2,6 +2,8 @@ import sys
 import base
 import info_header
 import warnings
+import helpers
+
 
 class MatrixObject(base.AlgObject):
     """Multidimentional array interpreted as a matrix.
@@ -98,8 +100,8 @@ class MatrixObject(base.AlgObject):
 
             if obj.info['type'] != 'mat':
                 raise ValueError("Meta data present is incompatible.")
-            _check_axis_names(obj)
-            _check_rows_cols(obj)
+            helpers.check_axis_names(obj)
+            helpers.check_rows_cols(obj)
         else:
             if row_axes is None and \
                col_axes is None and \
@@ -108,15 +110,15 @@ class MatrixObject(base.AlgObject):
                 row_axes = (0,)
                 col_axes = (1,)
             else:
-                _check_rows_cols(input_array, row_axes, col_axes)
-            _set_type_axes(obj, 'mat', axis_names)
+                helpers.check_rows_cols(input_array, row_axes, col_axes)
+            set_type_axes(obj, 'mat', axis_names)
             obj.rows = row_axes
             obj.cols = col_axes
         return obj
 
     def __setattr__(self, name, value):
         if name == 'axes':
-            _check_axis_names(self, value)
+            helpers.check_axis_names(self, value)
             self.info['axes'] = value
         elif name == 'rows':
             for ind in value:
@@ -150,7 +152,7 @@ class MatrixObject(base.AlgObject):
 
         Raises an exception if the rows or columns are invalid.
         """
-        _check_rows_cols(self)
+        helpers.check_rows_cols(self)
 
     def assert_axes_ordered(self):
         """Enforces a specific ordering to the matrix row and column axis
@@ -250,7 +252,7 @@ class MatrixObject(base.AlgObject):
         """Get the shape of the represented matrix."""
 
         self.check_rows_cols()
-        _check_axis_names(self)
+        helpers.check_axis_names(self)
         nrows = 1
 
         for axis in self.rows:

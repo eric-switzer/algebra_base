@@ -339,4 +339,5 @@ if __name__ == "__main__":
 
     OPTIONFLAGS = (doctest.ELLIPSIS |
                    doctest.NORMALIZE_WHITESPACE)
+
     #doctest.testmod(optionflags=OPTIONFLAGS)
