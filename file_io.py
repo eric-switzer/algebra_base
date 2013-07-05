@@ -2,6 +2,8 @@ import os
 from functools import wraps
 import numpy.lib.format as npfor
 from numpy.lib.utils import safe_eval
+import info_header
+import scipy as sp
 
 
 def _replace_write_header(f):
@@ -11,7 +13,7 @@ def _replace_write_header(f):
     def wrapper(*args, **kwds):
         # Replace the header writer in the format module.
         tmp_write_header = npfor.write_array_header_1_0
-        npfor.write_array_header_1_0 = write_array_header_1_0
+        npfor.write_array_header_1_0 = info_header.write_array_header_1_0
         # Evaluate the function.
         try:
             result = f(*args, **kwds)
@@ -79,7 +81,7 @@ def open_memmap(filename, mode='r+', dtype=None, shape=None,
     if mode is 'r' or mode is 'c':
         metafile = None
 
-    marray = InfoMemmap(marray, info, metafile)
+    marray = info_header.InfoMemmap(marray, info, metafile)
 
     return marray
 
@@ -129,7 +131,7 @@ def load(file, metafile=None):
         info = {}
 
     # Construct the infor array.
-    array = InfoArray(array, info)
+    array = info_header.InfoArray(array, info)
 
     return array
 
@@ -163,7 +165,7 @@ def save(file, iarray, metafile=None, version=(1, 0)):
     try:
         safe_eval(infostring)
     except SyntaxError:
-        raise ce.DataError("Array info not representable as a string.")
+        raise ValueError
 
     # Save the array in .npy format.
     if isinstance(file, basestring):

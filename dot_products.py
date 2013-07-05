@@ -1,3 +1,7 @@
+import scipy as sp
+import vector
+import matrix
+
 def dot(arr1, arr2, check_inner_axes=True):
     """Perform matrix multiplication."""
 
@@ -15,18 +19,12 @@ def dot(arr1, arr2, check_inner_axes=True):
         # column axis names of the input matrix.
         if check_inner_axes:
             if arr2.ndim != len(arr1.cols):
-                raise ce.DataError("Matrix column axis number are not the "
-                                   "same as vector ndim and strict checking "
-                                   "has been requested.")
+                raise ValueError
             for ii, name in enumerate(arr2.axes):
                 if arr1.shape[arr1.cols[ii]] != arr2.shape[ii]:
-                    raise ce.DataError("Matrix column axis lens are not the "
-                                       "same as vector axis lens and strict "
-                                       "checking has been requested.")
+                    raise ValueError
                 if name != arr1.axes[arr1.cols[ii]]:
-                    raise ce.DataError("Matrix column axis names are not the "
-                                       "same as vector axes names and strict "
-                                       "checking has been requested.")
+                    raise ValueError
 
         # Figure out what the output vector is going to look like.
         out_shape = [arr1.shape[ii] for ii in range(arr1.ndim)
@@ -35,7 +33,7 @@ def dot(arr1, arr2, check_inner_axes=True):
                      if ii in arr1.info['rows']]
 
         out_vect = sp.empty(out_shape)
-        out_vect = make_vect(out_vect, out_names)
+        out_vect = vector.make_vect(out_vect, out_names)
         n_blocks, block_shape = arr1.get_num_blocks(return_block_shape=True)
         # Make flattened veiws for the acctual matrix algebra.
         out_flat = out_vect.flat_view()
@@ -83,19 +81,19 @@ def partial_dot(left, right):
 
     # Figure out what kind of object the inputs are.
     msg = "Inputs must be either mat or vect objects."
-    if isinstance(left, mat):
+    if isinstance(left, matrix.MatrixObject):
         left_rows = list(left.rows)
         left_cols = list(left.cols)
-    elif isinstance(left, vect):
+    elif isinstance(left, vector.VectorObject):
         left_rows = []
         left_cols = range(left.ndim)
     else:
         raise TypeError(msg)
 
-    if isinstance(right, mat):
+    if isinstance(right, matrix.MatrixObject):
         right_rows = list(right.rows)
         right_cols = list(right.cols)
-    elif isinstance(right, vect):
+    elif isinstance(right, vector.VectorObject):
         right_rows = range(right.ndim)
         right_cols = []
     else:
@@ -156,8 +154,8 @@ def partial_dot(left, right):
 
     for axis in left_cols:
         axis_name = left.axes[axis]
-        if axis_name in left_col_only_names \
-           axis_name not in right_row_only_names \
+        if axis_name in left_col_only_names and \
+           axis_name not in right_row_only_names and \
            axis_name not in right_diag_names:
 
             left_notdot.append(axis)
@@ -465,10 +463,10 @@ def partial_dot(left, right):
     # XXX There is a bug where this crashes for certain cases if these lines
     # are before the loop.
     if not out_rows or not out_cols:
-        out = make_vect(out, out_names)
+        out = vector.make_vect(out, out_names)
     else:
-        out = make_mat(out, axis_names=out_names, row_axes=out_rows,
-                       col_axes=out_cols)
+        out = matrix.make_mat(out, axis_names=out_names, row_axes=out_rows,
+                              col_axes=out_cols)
 
     return out
 

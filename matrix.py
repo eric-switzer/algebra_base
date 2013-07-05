@@ -3,6 +3,8 @@ import base
 import info_header
 import warnings
 import helpers
+import scipy as sp
+import vector
 
 
 class MatrixObject(base.AlgObject):
@@ -111,7 +113,7 @@ class MatrixObject(base.AlgObject):
                 col_axes = (1,)
             else:
                 helpers.check_rows_cols(input_array, row_axes, col_axes)
-            set_type_axes(obj, 'mat', axis_names)
+            helpers.set_type_axes(obj, 'mat', axis_names)
             obj.rows = row_axes
             obj.cols = col_axes
         return obj
@@ -419,7 +421,7 @@ class MatrixObject(base.AlgObject):
         if self.row_shape() == self.col_shape():
             out.shape = self.row_shape()
 
-        out = make_vect(out)
+        out = vector.make_vect(out)
 
         if self.row_names() == self.col_names():
             out.axes = self.row_names()

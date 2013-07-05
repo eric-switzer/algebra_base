@@ -1,4 +1,5 @@
 import scipy as sp
+import numpy as np
 import cubic_conv_interpolation as cci
 
 
@@ -191,7 +192,9 @@ class AlgObject(object):
                                + ", coord: " + str(value) + ", range: "
                                + str((min(axis), max(axis))))
 
-                    raise ce.DataError(message)
+                    print message
+
+                    raise ValueError
 
                 distances = abs(axis - value)
                 min_ind = distances.argmin()

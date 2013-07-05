@@ -1,5 +1,10 @@
 import numpy as np
+import scipy as sp
 import operator
+import base
+import info_header
+import matrix
+import vector
 
 
 def empty_like(obj):
@@ -37,17 +42,17 @@ def as_alg_like(array, obj):
         Algebra object from which propertise should be copied.
     """
 
-    if not isinstance(obj, AlgObject):
+    if not isinstance(obj, base.AlgObject):
         raise TypeError("Object to mimic must be an `AlgObject`.")
 
     out = array
-    out = InfoArray(out)
+    out = info_header.InfoArray(out)
     out.info = dict(obj.info)
 
-    if isinstance(obj, vect):
-        out = make_vect(out)
-    elif isinstance(obj, mat):
-        out = make_mat(out)
+    if isinstance(obj, vector.VectorObject):
+        out = vector.make_vect(out)
+    elif isinstance(obj, matrix.MatrixObject):
+        out = matrix.make_mat(out)
     else:
         raise TypeError("Expected `obj` to be an algebra mat or vect.")
 

@@ -8,8 +8,6 @@ import copy
 import scipy as sp
 import numpy.lib.format as npfor
 
-import kiyopy.custom_exceptions as ce
-
 import base
 import file_io
 import info_header
@@ -102,7 +100,7 @@ class TestLoadSave(unittest.TestCase):
 
     def test_checks_dict_executable(self):
         self.Mat.info['un_readable_object'] = sp.arange(100000)
-        self.assertRaises(ce.DataError, file_io.save, 'temp.npy', self.Mat)
+        self.assertRaises(ValueError, file_io.save, 'temp.npy', self.Mat)
 
     def test_loads(self):
         file_io.save('temp.npy', self.Mat)
@@ -314,7 +312,7 @@ class TestViewsTemplates(unittest.TestCase):
 
         # Memmaps.
         c = self.vect_mem.view()
-        self.assertTrue(isinstance(c, vector.VectorObject_memmap))
+        self.assertTrue(isinstance(c, vector.vect_memmap))
         self.assertEqual(c.metafile, self.vect_mem.metafile)
         self.assertTrue(c.info is self.vect_mem.info)
 
@@ -470,14 +468,14 @@ class TestAlgUtils(unittest.TestCase):
         # Make sure it checks that the inner axis names match.
         self.mat.axes = ('freq', 'mode', 'c', 'b')
         dot_products.dot(self.mat, self.vect, check_inner_axes=False)
-        self.assertRaises(ce.DataError, dot_products.dot, self.mat, self.vect)
+        self.assertRaises(ValueError, dot_products.dot, self.mat, self.vect)
 
         # Make sure that is checks that the inner axes lengths match.
         self.mat.shape = (5, 4, 6)
         self.mat.cols = (0, 2)
         self.mat.axes = ('freq', 'mode', 'a')
         dot_products.dot(self.mat, self.vect, check_inner_axes=False)
-        self.assertRaises(ce.DataError, dot_products.dot, self.mat, self.vect)
+        self.assertRaises(ValueError, dot_products.dot, self.mat, self.vect)
 
     def test_partial_dot_mat_vect(self):
         self.mat.shape = (4, 6, 5)
@@ -687,7 +685,7 @@ class TestAlgUtils(unittest.TestCase):
         self.assertRaises(ValueError, v.slice_interpolate_weights, [0, 1], 2.5)
 
         # Test bounds.
-        self.assertRaises(ce.DataError, v.slice_interpolate_weights, [1, 2],
+        self.assertRaises(ValueError, v.slice_interpolate_weights, [1, 2],
                           [2.5, 1.5])
 
         # Test linear interpolations in 1D.
