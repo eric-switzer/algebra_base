@@ -1,5 +1,5 @@
 #! /usr/bin/python
-"""Unit tests for algebra.py."""
+"""Unit tests for algebra_base"""
 
 import os
 import unittest
@@ -8,8 +8,16 @@ import copy
 import scipy as sp
 import numpy.lib.format as npfor
 
-import algebra
 import kiyopy.custom_exceptions as ce
+
+import base
+import file_io
+import info_header
+import vector
+import matrix
+import cubic_conv_interpolation
+import dot_products
+import utils
 
 
 class TestLongHeader(unittest.TestCase):
@@ -24,19 +32,19 @@ class TestMatTypes(unittest.TestCase):
         # Works if constructed from array.
         data = sp.empty((5, 6, 6))
         data[:] = 4.0
-        Mat = algebra.info_array(data, {'a': 'b'})
+        Mat = info_header.InfoArray(data, {'a': 'b'})
         self.assertEqual(Mat.shape, (5, 6, 6))
         self.assertEqual(Mat.info['a'], 'b')
         self.assertTrue(sp.allclose(Mat, 4.0))
         # Check that the dictionary is there and empty if uninitialized.
-        Mat4 = algebra.info_array(data)
+        Mat4 = info_header.InfoArray(data)
         self.assertEqual(Mat4.info, {})
         # Works if constructed from a slice.
         Mat2 = Mat[1:2, :, :]
         self.assertEqual(Mat2.shape, (1, 6, 6))
         self.assertEqual(Mat2.info['a'], 'b')
         # Works if constructed from a view.
-        Mat3 = data.view(algebra.info_array)
+        Mat3 = data.view(info_header.InfoArray)
         self.assertEqual(Mat3.shape, (5, 6, 6))
         Mat3.info['a'] = 'b'
 
@@ -44,7 +52,7 @@ class TestMatTypes(unittest.TestCase):
         # Works if constructed from array.
         data = npfor.open_memmap('temp.npy', mode='w+', shape=(4, 3, 3))
         data[:] = 5.0
-        Mat = algebra.info_memmap(data, {'a': 'b'})
+        Mat = info_header.InfoMemmap(data, {'a': 'b'})
         Mat.flush()
         self.assertEqual(Mat.shape, (4, 3, 3))
         self.assertEqual(Mat.info['a'], 'b')
@@ -55,67 +63,67 @@ class TestMatTypes(unittest.TestCase):
 
     def test_fails_if_not_memmap(self):
         data = sp.empty((5, 7, 7))
-        self.assertRaises(TypeError, algebra.info_memmap, data)
+        self.assertRaises(TypeError, info_header.InfoMemmap, data)
 
     def test_assert_info(self):
         """Test the assert_info function."""
         # info_memaps should pass.
         data = npfor.open_memmap('temp.npy', mode='w+', shape=(4, 3, 3))
         data[:] = 5.0
-        Mat = algebra.info_memmap(data)
-        algebra.assert_info(Mat)
+        Mat = info_header.InfoMemmap(data)
+        info_header.assert_info(Mat)
         del Mat
         os.remove('temp.npy')
         # info_arrays should pass.
         data = sp.empty((5, 6, 6))
         data[:] = 4.0
-        Mat = algebra.info_array(data)
-        algebra.assert_info(Mat)
+        Mat = info_header.InfoArray(data)
+        info_header.assert_info(Mat)
         # arrays should fail.
-        self.assertRaises(TypeError, algebra.assert_info, data)
+        self.assertRaises(TypeError, info_header.assert_info, data)
 
 
 class TestLoadSave(unittest.TestCase):
     def setUp(self):
         info = {'a': 42, 'b': 'a string', 'c': 3.14159}
         data = sp.arange(80).reshape((2, 8, 5))
-        self.Mat = algebra.info_array(data, info)
+        self.Mat = info_header.InfoArray(data, info)
 
     def test_runs_filename(self):
-        algebra.save('temp.npy', self.Mat)
+        file_io.save('temp.npy', self.Mat)
         self.assertTrue('temp.npy' in os.listdir('./'))
         self.assertTrue('temp.npy.meta' in os.listdir('./'))
 
     def test_runs_fid(self):
         fid = open('temp.npy', 'w')
-        algebra.save(fid, self.Mat)
+        file_io.save(fid, self.Mat)
         self.assertTrue('temp.npy' in os.listdir('./'))
         self.assertTrue('temp.npy.meta' in os.listdir('./'))
 
     def test_checks_dict_executable(self):
         self.Mat.info['un_readable_object'] = sp.arange(100000)
-        self.assertRaises(ce.DataError, algebra.save, 'temp.npy', self.Mat)
+        self.assertRaises(ce.DataError, file_io.save, 'temp.npy', self.Mat)
 
     def test_loads(self):
-        algebra.save('temp.npy', self.Mat)
-        Loaded = algebra.load('temp.npy')
+        file_io.save('temp.npy', self.Mat)
+        Loaded = file_io.load('temp.npy')
         self.assertTrue(isinstance(Loaded, sp.ndarray))
-        self.assertTrue(isinstance(Loaded, algebra.info_array))
+        self.assertTrue(isinstance(Loaded, info_header.InfoArray))
         self.assertTrue(sp.allclose(Loaded, self.Mat))
         self.assertEqual(Loaded.info['a'], self.Mat.info['a'])
         self.assertEqual(Loaded.info['b'], self.Mat.info['b'])
         self.assertAlmostEqual(Loaded.info['c'], self.Mat.info['c'])
 
     def test_memmap_read(self):
-        algebra.save('temp.npy', self.Mat)
-        marray = algebra.open_memmap('temp.npy', mode="r")
+        file_io.save('temp.npy', self.Mat)
+        marray = file_io.open_memmap('temp.npy', mode="r")
         self.assertTrue(isinstance(marray, sp.ndarray))
-        self.assertTrue(isinstance(marray, algebra.info_memmap))
+        self.assertTrue(isinstance(marray, info_header.InfoMemmap))
         self.assertTrue(sp.allclose(marray, self.Mat))
         self.assertEqual(marray.info['a'], self.Mat.info['a'])
 
     def test_memmap_write(self):
-        marray = algebra.open_memmap('temp.npy', mode="w+",
+        marray = file_io.open_memmap('temp.npy', mode="w+",
                                      shape=self.Mat.shape,
                                      dtype=self.Mat.dtype,
                                      )
@@ -124,14 +132,14 @@ class TestLoadSave(unittest.TestCase):
         marray.info = self.Mat.info
         del marray
         marray = None
-        Loaded = algebra.load('temp.npy')
+        Loaded = file_io.load('temp.npy')
         self.assertTrue(isinstance(Loaded, sp.ndarray))
-        self.assertTrue(isinstance(Loaded, algebra.info_array))
+        self.assertTrue(isinstance(Loaded, info_header.InfoArray))
         self.assertTrue(sp.allclose(Loaded, self.Mat))
         self.assertEqual(Loaded.info['a'], self.Mat.info['a'])
 
     def test_memmap_write_view(self):
-        marray = algebra.open_memmap('temp.npy', mode="w+",
+        marray = file_io.open_memmap('temp.npy', mode="w+",
                                      shape=self.Mat.shape,
                                      dtype=self.Mat.dtype,
                                      )
@@ -140,15 +148,15 @@ class TestLoadSave(unittest.TestCase):
         # This is testing a bug I had earlier where base data's were
         # overwriting the meta data of higher level objects.
         inf = marray.info
-        marray = marray.view(algebra.info_memmap)
+        marray = marray.view(info_header.InfoMemmap)
         inf2 = marray.info
         marray[:] = self.Mat[:]
         marray.info.update(self.Mat.info)
         del marray
         marray = None
-        Loaded = algebra.load('temp.npy')
+        Loaded = file_io.load('temp.npy')
         self.assertTrue(isinstance(Loaded, sp.ndarray))
-        self.assertTrue(isinstance(Loaded, algebra.info_array))
+        self.assertTrue(isinstance(Loaded, info_header.InfoArray))
         self.assertTrue(sp.allclose(Loaded, self.Mat))
         self.assertEqual(Loaded.info['a'], self.Mat.info['a'])
 
@@ -166,44 +174,44 @@ class TestMakeAlgebra(unittest.TestCase):
     def setUp(self):
         data = sp.arange(60, dtype=float)
         data.shape = (2, 5, 6)
-        self.array = algebra.info_array(data)
+        self.array = info_header.InfoArray(data)
 
     def test_make_vector(self):
-        self.array = algebra.vect_array(self.array)
+        self.array = vector.vect_array(self.array)
         self.assertEqual(self.array.info['type'], 'vect')
         self.assertEqual(self.array.axes, (None, None, None))
-        self.assertTrue(isinstance(self.array, algebra.vect))
-        self.assertTrue(isinstance(self.array, algebra.info_array))
+        self.assertTrue(isinstance(self.array, vector.VectorObject))
+        self.assertTrue(isinstance(self.array, info_header.InfoArray))
 
     def test_make_vector_named(self):
-        self.array = algebra.vect_array(self.array, ('freq', None, 'ra'))
+        self.array = vector.vect_array(self.array, ('freq', None, 'ra'))
         self.assertEqual(self.array.info['axes'], ('freq', None, 'ra'))
         self.assertEqual(self.array.axes, ('freq', None, 'ra'))
 
     def test_make_vector_raises(self):
-        self.assertRaises(TypeError, algebra.vect_array, self.array, (1, 2, 3))
+        self.assertRaises(TypeError, vector.vect_array, self.array, (1, 2, 3))
 
-        self.assertRaises(ValueError, algebra.vect_array, self.array,
+        self.assertRaises(ValueError, vector.vect_array, self.array,
                           ('a', 'b'))
 
     def test_make_mat(self):
-        self.array = algebra.mat_array(self.array, row_axes=(0, 1),
+        self.array = matrix.mat_array(self.array, row_axes=(0, 1),
                                        col_axes=(0, 2))
 
         self.assertEqual(self.array.info['type'], 'mat')
         self.assertEqual(self.array.axes, (None, None, None))
         self.assertEqual(self.array.rows, (0, 1))
         self.assertEqual(self.array.cols, (0, 2))
-        self.assertTrue(isinstance(self.array, algebra.mat))
+        self.assertTrue(isinstance(self.array, matrix.MatrixObject))
 
     def test_make_mat_raises(self):
-        self.assertRaises(ValueError, algebra.mat_array, self.array,
+        self.assertRaises(ValueError, matrix.mat_array, self.array,
                           (1, ), (2, ))
 
-        self.assertRaises(ValueError, algebra.mat_array, self.array,
+        self.assertRaises(ValueError, matrix.mat_array, self.array,
                           (0, 1, 'a'), (2, ))
 
-        self.assertRaises(ValueError, algebra.mat_array, self.array,
+        self.assertRaises(ValueError, matrix.mat_array, self.array,
                           (0, 1), (3, ))
 
 
@@ -212,15 +220,15 @@ class TestViewsTemplates(unittest.TestCase):
         data = sp.arange(20)
         data.shape = (5, 4)
 
-        self.mat_arr = algebra.make_mat(data.copy(),
+        self.mat_arr = matrix.make_mat(data.copy(),
                                         axis_names=('ra', 'dec'))
 
-        self.vect_arr = algebra.make_vect(data.copy(),
+        self.vect_arr = vector.make_vect(data.copy(),
                                           axis_names=('ra', 'dec'))
 
         mem = npfor.open_memmap('temp.npy', mode='w+', shape=(5, 4))
         mem[:] = data
-        self.vect_mem = algebra.make_vect(mem)
+        self.vect_mem = vector.make_vect(mem)
         self.arr = data.copy()
 
     def test_slices(self):
@@ -237,17 +245,17 @@ class TestViewsTemplates(unittest.TestCase):
         self.assertTrue(isinstance(c, sp.memmap))
 
         # None of them should be `vect`, `mat` or `alg_object`.
-        self.assertTrue(not isinstance(a, algebra.alg_object))
-        self.assertTrue(not isinstance(b, algebra.vect))
-        self.assertTrue(not isinstance(c, algebra.vect))
+        self.assertTrue(not isinstance(a, base.AlgObject))
+        self.assertTrue(not isinstance(b, vector.VectorObject))
+        self.assertTrue(not isinstance(c, vector.VectorObject))
 
         # They should be info arrays.  The dictionaries should be copies.  The
         # info_memmap metafile name should be none such that copies don't
         # clobber origional data.
-        self.assertTrue(isinstance(a, algebra.info_array))
+        self.assertTrue(isinstance(a, info_header.InfoArray))
         self.assertEqual(a.info, self.mat_arr.info)
         self.assertTrue(not a.info is self.mat_arr.info)
-        self.assertTrue(isinstance(c, algebra.info_memmap))
+        self.assertTrue(isinstance(c, info_header.InfoMemmap))
         self.assertTrue(c.metafile is None)
 
     def test_ufuncs(self):
@@ -256,13 +264,13 @@ class TestViewsTemplates(unittest.TestCase):
 
         # Vector only.
         a = self.vect_arr + self.vect_arr
-        self.assertTrue(isinstance(a, algebra.vect))
+        self.assertTrue(isinstance(a, vector.VectorObject))
         self.assertEqual(a.info, self.vect_arr.info)
         self.assertTrue(not a.info is self.vect_arr.info)
 
         # Matrix vector.
         b = self.vect_arr - self.mat_arr
-        self.assertTrue(isinstance(b, algebra.mat))
+        self.assertTrue(isinstance(b, matrix.MatrixObject))
         self.assertEqual(b.info, self.mat_arr.info)
         self.assertTrue(not b.info is self.vect_arr.info)
         self.assertTrue(not b.info is self.mat_arr.info)
@@ -271,15 +279,15 @@ class TestViewsTemplates(unittest.TestCase):
         q = sp.arange(3)
         q.shape = (3, 1, 1)
         c = q*self.mat_arr
-        self.assertTrue(not isinstance(c, algebra.alg_object))
-        self.assertTrue(isinstance(c, algebra.info_array))
+        self.assertTrue(not isinstance(c, base.AlgObject))
+        self.assertTrue(isinstance(c, info_header.InfoArray))
 
     def test_ufuncs_memmap(self):
         # Same as above.
         c = self.vect_mem / 2.0
-        self.assertTrue(isinstance(c, algebra.info_memmap))
+        self.assertTrue(isinstance(c, info_header.InfoMemmap))
         self.assertTrue(c.metafile is None)
-        self.assertTrue(isinstance(c, algebra.alg_object))
+        self.assertTrue(isinstance(c, base.AlgObject))
 
     def test_sum_mean(self):
         s = sp.sum(self.vect_arr, 1)
@@ -287,9 +295,9 @@ class TestViewsTemplates(unittest.TestCase):
         q = sp.sum(self.mat_arr, 1)
         self.assertFalse(s.info is self.vect_arr.info)
         self.assertFalse(r.info is self.vect_mem.info)
-        self.assertTrue(not isinstance(s, algebra.alg_object))
-        self.assertTrue(not isinstance(r, algebra.alg_object))
-        self.assertTrue(not isinstance(q, algebra.alg_object))
+        self.assertTrue(not isinstance(s, base.AlgObject))
+        self.assertTrue(not isinstance(r, base.AlgObject))
+        self.assertTrue(not isinstance(q, base.AlgObject))
 
     def test_copy(self):
         c = self.vect_arr.copy()
@@ -301,17 +309,17 @@ class TestViewsTemplates(unittest.TestCase):
 
         # Arrays.
         a = self.mat_arr.view()
-        self.assertTrue(isinstance(a, algebra.mat_array))
+        self.assertTrue(isinstance(a, matrix.mat_array))
         self.assertTrue(a.info is self.mat_arr.info)
 
         # Memmaps.
         c = self.vect_mem.view()
-        self.assertTrue(isinstance(c, algebra.vect_memmap))
+        self.assertTrue(isinstance(c, vector.VectorObject_memmap))
         self.assertEqual(c.metafile, self.vect_mem.metafile)
         self.assertTrue(c.info is self.vect_mem.info)
 
         # Changing type.
-        b = self.vect_arr.view(algebra.info_array)
+        b = self.vect_arr.view(info_header.InfoArray)
         self.assertTrue(b.info is self.vect_arr.info)
 
     # How to implement: define __array_wrap__ and __getitem__ in
@@ -335,30 +343,30 @@ class TestMatVectFromArray(unittest.TestCase):
         self.memmap_data[:, :, :] = sp.arange(80).reshape(2, 8, 5)
 
     def test_vect(self):
-        vect_arr = algebra.make_vect(self.data)
-        vect_mem = algebra.make_vect(self.memmap_data)
+        vect_arr = vector.make_vect(self.data)
+        vect_mem = vector.make_vect(self.memmap_data)
         self.assertTrue(sp.allclose(vect_arr, vect_mem))
-        self.assertTrue(isinstance(vect_arr, algebra.info_array))
-        self.assertTrue(isinstance(vect_arr, algebra.vect))
-        self.assertTrue(isinstance(vect_mem, algebra.info_memmap))
-        self.assertTrue(isinstance(vect_mem, algebra.vect))
+        self.assertTrue(isinstance(vect_arr, info_header.InfoArray))
+        self.assertTrue(isinstance(vect_arr, vector.VectorObject))
+        self.assertTrue(isinstance(vect_mem, info_header.InfoMemmap))
+        self.assertTrue(isinstance(vect_mem, vector.VectorObject))
 
     def test_mat(self):
-        mat_arr = algebra.make_mat(self.data, (0, 1), (0, 2))
-        mat_mem = algebra.make_mat(self.memmap_data, (0, 1), (0, 2))
+        mat_arr = matrix.make_mat(self.data, (0, 1), (0, 2))
+        mat_mem = matrix.make_mat(self.memmap_data, (0, 1), (0, 2))
         self.assertTrue(sp.allclose(mat_arr, mat_mem))
-        self.assertTrue(isinstance(mat_arr, algebra.info_array))
-        self.assertTrue(isinstance(mat_arr, algebra.mat))
-        self.assertTrue(isinstance(mat_mem, algebra.info_memmap))
-        self.assertTrue(isinstance(mat_mem, algebra.mat))
+        self.assertTrue(isinstance(mat_arr, info_header.InfoArray))
+        self.assertTrue(isinstance(mat_arr, matrix.MatrixObject))
+        self.assertTrue(isinstance(mat_mem, info_header.InfoMemmap))
+        self.assertTrue(isinstance(mat_mem, matrix.MatrixObject))
 
     def test_from_info(self):
-        arr = algebra.info_array(self.data)
-        mat_arr = algebra.make_mat(arr, (0, 1), (0, 2))
-        self.assertTrue(isinstance(mat_arr, algebra.mat))
-        mem = algebra.info_memmap(self.memmap_data)
-        vect_mem = algebra.make_vect(mem)
-        self.assertTrue(isinstance(vect_mem, algebra.vect))
+        arr = info_header.InfoArray(self.data)
+        mat_arr = matrix.make_mat(arr, (0, 1), (0, 2))
+        self.assertTrue(isinstance(mat_arr, matrix.MatrixObject))
+        mem = info_header.InfoMemmap(self.memmap_data)
+        vect_mem = vector.make_vect(mem)
+        self.assertTrue(isinstance(vect_mem, vector.VectorObject))
 
     def tearDown(self):
         del self.memmap_data
@@ -370,16 +378,16 @@ class TestAlgUtils(unittest.TestCase):
     def setUp(self):
         data = sp.arange(30, dtype=float)
         data.shape = (5, 2, 3)
-        self.vect = algebra.info_array(data)
+        self.vect = info_header.InfoArray(data)
 
-        self.vect = algebra.vect_array(self.vect,
+        self.vect = vector.vect_array(self.vect,
                                        axis_names=('freq', 'a', 'b'))
 
         data = sp.arange(120, dtype=float)
-        self.mat = algebra.info_array(data)
+        self.mat = info_header.InfoArray(data)
         self.mat.shape = (5, 4, 6)
 
-        self.mat = algebra.mat_array(self.mat,
+        self.mat = matrix.mat_array(self.mat,
                                      row_axes=(0, 1), col_axes=(0, 2),
                                      axis_names=('freq', 'mode1', 'mode2'))
 
@@ -450,7 +458,7 @@ class TestAlgUtils(unittest.TestCase):
         self.mat.shape = (5, 4, 2, 3)
         self.mat.cols = (0, 2, 3)
         self.mat.axes = ('freq', 'mode', 'a', 'b')
-        prod = algebra.dot(self.mat, self.vect)
+        prod = dot_products.dot(self.mat, self.vect)
         self.assertEqual(prod.mat_shape(), (20, ))
         self.assertEqual(prod.shape, (5, 4))
         self.assertEqual(prod.info['axes'], ('freq', 'mode'))
@@ -461,22 +469,22 @@ class TestAlgUtils(unittest.TestCase):
 
         # Make sure it checks that the inner axis names match.
         self.mat.axes = ('freq', 'mode', 'c', 'b')
-        algebra.dot(self.mat, self.vect, check_inner_axes=False)
-        self.assertRaises(ce.DataError, algebra.dot, self.mat, self.vect)
+        dot_products.dot(self.mat, self.vect, check_inner_axes=False)
+        self.assertRaises(ce.DataError, dot_products.dot, self.mat, self.vect)
 
         # Make sure that is checks that the inner axes lengths match.
         self.mat.shape = (5, 4, 6)
         self.mat.cols = (0, 2)
         self.mat.axes = ('freq', 'mode', 'a')
-        algebra.dot(self.mat, self.vect, check_inner_axes=False)
-        self.assertRaises(ce.DataError, algebra.dot, self.mat, self.vect)
+        dot_products.dot(self.mat, self.vect, check_inner_axes=False)
+        self.assertRaises(ce.DataError, dot_products.dot, self.mat, self.vect)
 
     def test_partial_dot_mat_vect(self):
         self.mat.shape = (4, 6, 5)
         self.mat.rows = (0, 1)
         self.mat.cols = (2,)
         self.mat.axes = ('x', 'y', 'freq')
-        new_vect = algebra.partial_dot(self.mat, self.vect)
+        new_vect = dot_products.partial_dot(self.mat, self.vect)
         self.assertEqual(new_vect.shape, (4, 6, 2, 3))
         self.assertEqual(new_vect.axes, ('x', 'y', 'a', 'b'))
 
@@ -490,16 +498,16 @@ class TestAlgUtils(unittest.TestCase):
         mat1 = sp.asarray(self.mat)
         mat1.shape = (4, 3, 2, 5)
 
-        mat1 = algebra.make_mat(mat1, axis_names=('time', 'x', 'y', 'z'),
+        mat1 = matrix.make_mat(mat1, axis_names=('time', 'x', 'y', 'z'),
                                 row_axes=(0, ), col_axes=(1, 2, 3))
 
         mat2 = sp.asarray(self.mat)
         mat2.shape = (4, 2, 3, 5)
 
-        mat2 = algebra.make_mat(mat2, axis_names=('w', 'y', 'x', 'freq'),
+        mat2 = matrix.make_mat(mat2, axis_names=('w', 'y', 'x', 'freq'),
                                 row_axes=(0, 1, 2), col_axes=(3, ))
 
-        result = algebra.partial_dot(mat1, mat2)
+        result = dot_products.partial_dot(mat1, mat2)
         self.assertEqual(result.axes, ('time', 'w', 'z', 'freq'))
         self.assertEqual(result.rows, (0, 1))
         self.assertEqual(result.cols, (2, 3))
@@ -512,13 +520,13 @@ class TestAlgUtils(unittest.TestCase):
         mat1 = sp.arange(2 * 3 * 5 * 7 * 11)
         mat1.shape = (2, 3, 5, 7, 11)
 
-        mat1 = algebra.make_mat(mat1, axis_names=('time', 'x', 'y', 'ra', 'z'),
+        mat1 = matrix.make_mat(mat1, axis_names=('time', 'x', 'y', 'ra', 'z'),
                                 row_axes=(0, 1, 3), col_axes=(0, 2, 3, 4))
 
         mat2 = sp.arange(2 * 13 * 5 * 7 * 17)
         mat2.shape = (2, 13, 7, 5, 17)
 
-        mat2 = algebra.make_mat(mat2,
+        mat2 = matrix.make_mat(mat2,
                                 axis_names=('time', 'w', 'ra', 'y', 'freq'),
                                 row_axes=(0, 1, 2, 3), col_axes=(1, 2, 4))
 
@@ -531,7 +539,7 @@ class TestAlgUtils(unittest.TestCase):
                 this_tmp = sp.rollaxis(this_tmp, 2, 0)
                 right_ans[jj, :, ii, ...] = this_tmp
 
-        result = algebra.partial_dot(mat1, mat2)
+        result = dot_products.partial_dot(mat1, mat2)
         self.assertEqual(result.axes, ('ra', 'w', 'time', 'x', 'z', 'freq'))
         self.assertEqual(result.rows, (0, 1, 2, 3))
         self.assertEqual(result.cols, (0, 1, 4, 5))
@@ -556,7 +564,7 @@ class TestAlgUtils(unittest.TestCase):
         self.mat.rows = (0, )
         self.mat.axes = ('freq', 'x', 'y')
         matT = self.mat.mat_transpose()
-        new_vect = algebra.partial_dot(matT, self.vect)
+        new_vect = dot_products.partial_dot(matT, self.vect)
         self.assertEqual(new_vect.shape, (4, 6, 2, 3))
         self.assertEqual(new_vect.axes, ('x', 'y', 'a', 'b'))
 
@@ -573,33 +581,33 @@ class TestAlgUtils(unittest.TestCase):
         self.mat.shape = (5, 4, 2, 3)
         self.mat.cols = (0, 2, 3)
         self.mat.axes = ('freq', 'mode', 'a', 'b')
-        self.assertRaises(ValueError, algebra.dot, self.vect, self.mat)
+        self.assertRaises(ValueError, dot_products.dot, self.vect, self.mat)
 
         # Matrix-Matrix multiplication not written yet.
         mat2 = sp.arange(120)
         mat2.shape = (5, 2, 3, 4)
-        mat2 = algebra.make_mat(mat2, (0, 1, 2), (0, 3))
-        self.assertRaises(NotImplementedError, algebra.dot, self.mat, mat2)
+        mat2 = matrix.make_mat(mat2, (0, 1, 2), (0, 3))
+        self.assertRaises(NotImplementedError, dot_products.dot, self.mat, mat2)
 
     def test_to_from_file(self):
         """Test that vects and mats can be written to and from file and have
         all thier properties preserved."""
         # For vectors.
-        algebra.save('temp.npy', self.vect)
-        new_vect = algebra.vect_array(algebra.load('temp.npy'))
+        file_io.save('temp.npy', self.vect)
+        new_vect = vector.vect_array(file_io.load('temp.npy'))
         self.assertTrue(sp.allclose(self.vect, new_vect))
         self.assertEqual(self.vect.axes, new_vect.axes)
 
         # For matricies.
-        algebra.save('temp.npy', self.mat)
-        new_mat = algebra.mat_array(algebra.load('temp.npy'))
+        file_io.save('temp.npy', self.mat)
+        new_mat = matrix.mat_array(file_io.load('temp.npy'))
         self.assertTrue(sp.allclose(self.mat, new_mat))
         self.assertEqual(self.mat.axes, new_mat.axes)
 
         # Messing with stuf should raise exceptions.
-        new_mat = algebra.load('temp.npy')
+        new_mat = file_io.load('temp.npy')
         new_mat.info['cols'] = (0, 3)
-        self.assertRaises(ValueError, algebra.mat_array, new_mat)
+        self.assertRaises(ValueError, matrix.mat_array, new_mat)
 
         # Clean up
         os.remove('temp.npy')
@@ -625,17 +633,17 @@ class TestAlgUtils(unittest.TestCase):
                                     1.0*(sp.arange(2) - 2//2) + 5))
 
     def test_zeros_like(self):
-        zvect = algebra.zeros_like(self.vect)
+        zvect = utils.zeros_like(self.vect)
         self.assertEqual(self.vect.info, zvect.info)
         self.assertTrue(sp.allclose(zvect, 0))
-        self.assertTrue(isinstance(zvect, algebra.vect))
+        self.assertTrue(isinstance(zvect, vector.VectorObject))
         self.assertTrue(not sp.allclose(self.vect, 0))
-        zmat = algebra.zeros_like(self.mat)
+        zmat = utils.zeros_like(self.mat)
         self.assertEqual(self.mat.info, zmat.info)
         self.assertTrue(sp.allclose(zmat, 0))
-        self.assertTrue(isinstance(zmat, algebra.mat))
+        self.assertTrue(isinstance(zmat, matrix.MatrixObject))
         self.assertTrue(not sp.allclose(self.mat, 0))
-        self.assertRaises(TypeError, algebra.zeros_like, {'a': 3})
+        self.assertRaises(TypeError, utils.zeros_like, {'a': 3})
 
     def test_row_cols_names(self):
         self.assertEqual(self.mat.row_names(), ('freq', 'mode1'))
@@ -744,8 +752,8 @@ class TestAlgUtils(unittest.TestCase):
         # Construct a 3D array that is a quadratic function.
         data = sp.arange(140, dtype=float)
         data.shape = (5, 4, 7)
-        vect = algebra.info_array(data)
-        vect = algebra.vect_array(vect, axis_names=('freq', 'a', 'b'))
+        vect = info_header.InfoArray(data)
+        vect = vector.vect_array(vect, axis_names=('freq', 'a', 'b'))
 
         v = vect
         a = sp.arange(-2, 3)**2
@@ -820,7 +828,7 @@ class TestMatUtilsSq(unittest.TestCase):
     def setUp(self):
         data = sp.arange(160)
         data.shape = (10, 4, 4)
-        self.mat = algebra.make_mat(data, row_axes=(0, 1), col_axes=(0, 2),
+        self.mat = matrix.make_mat(data, row_axes=(0, 1), col_axes=(0, 2),
                                     axis_names=('freq', 'ra', 'ra'))
 
         self.mat.set_axis_info('ra', 215, 0.5)
@@ -830,7 +838,7 @@ class TestMatUtilsSq(unittest.TestCase):
         d = self.mat.mat_diag()
         e = self.mat.expand()
         self.assertTrue(sp.allclose(d.flat_view(), sp.diag(e)))
-        self.assertTrue(isinstance(d, algebra.vect))
+        self.assertTrue(isinstance(d, vector.VectorObject))
         self.assertEqual(d.shape, (10, 4))
         self.assertEqual(d.axes, ('freq', 'ra'))
         self.assertTrue(sp.allclose(d.get_axis('ra'), self.mat.get_axis('ra')))
